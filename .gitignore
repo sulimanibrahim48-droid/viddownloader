@@ -1,0 +1,13 @@
+# Build artifacts
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Temp files
+temp_playlist_downloads/
+*.log
