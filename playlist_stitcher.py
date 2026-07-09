@@ -25,7 +25,10 @@ import shutil
 import argparse
 import subprocess
 import threading
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from yt_dlp import YoutubeDL
+
+VIDEO_EXTENSIONS = {'.mp4', '.mkv', '.webm', '.mov', '.m4v', '.avi', '.flv'}
 
 # Configure stdout/stderr to use UTF-8 to avoid UnicodeEncodeErrors on Windows terminals
 if hasattr(sys.stdout, 'reconfigure'):
@@ -84,15 +87,45 @@ def get_ffmpeg_path():
         
     return None
 
+def normalize_playlist_url(url):
+    """Convert YouTube watch URLs with a list id into canonical playlist URLs."""
+    parsed = urlparse(url.strip())
+    query = parse_qs(parsed.query)
+    list_id = (query.get('list') or [None])[0]
+
+    if not list_id:
+        return url.strip()
+
+    host = parsed.netloc.lower()
+    path = parsed.path.lower()
+    if 'youtube.com' in host and path == '/watch':
+        return urlunparse((
+            parsed.scheme or 'https',
+            'www.youtube.com',
+            '/playlist',
+            '',
+            urlencode({'list': list_id}),
+            '',
+        ))
+
+    return url.strip()
+
 def download_playlist(playlist_url, temp_dir, ffmpeg_path=None, log_cb=print, progress_cb=None):
     """
     Downloads all videos from the given playlist into the specified temp directory.
     Uses zero-padded playlist indices to preserve the correct chronological order.
     """
+    playlist_url = normalize_playlist_url(playlist_url)
     log_cb(f"🚀 Initializing download for: {playlist_url}")
+
+    downloaded_paths = set()
     
     # Set up the progress hook wrapper
     def internal_progress_hook(d):
+        filename = d.get('filename')
+        if filename:
+            downloaded_paths.add(os.path.abspath(filename))
+
         if progress_cb:
             progress_cb(d)
             
@@ -115,14 +148,22 @@ def download_playlist(playlist_url, temp_dir, ffmpeg_path=None, log_cb=print, pr
         if error_code != 0:
             log_cb("⚠️ Some videos in the playlist failed to download or were skipped.")
 
-    # Gather and sort the downloaded mp4 files
+    # Gather and sort the downloaded media files.
+    # yt-dlp may produce mp4, mkv, webm, or another supported container depending on the source.
     downloaded_files = []
-    for file in os.listdir(temp_dir):
-        if file.endswith('.mp4'):
-            downloaded_files.append(os.path.join(temp_dir, file))
-            
-    # Sort numerically based on the zero-padded index filename prefix
-    downloaded_files.sort()
+    for root, _, files in os.walk(temp_dir):
+        for file in files:
+            ext = os.path.splitext(file)[1].lower()
+            if ext in VIDEO_EXTENSIONS:
+                downloaded_files.append(os.path.join(root, file))
+
+    # Include files reported by yt-dlp even if they were not discovered by extension scan yet.
+    for path in downloaded_paths:
+        if os.path.splitext(path)[1].lower() in VIDEO_EXTENSIONS and os.path.exists(path):
+            downloaded_files.append(path)
+
+    # Sort numerically based on the zero-padded index filename prefix, then deduplicate.
+    downloaded_files = sorted(set(downloaded_files))
     
     return downloaded_files
 
@@ -410,6 +451,7 @@ if GUI_AVAILABLE:
         def start_process(self):
             url = self.url_entry.get().strip()
             output = self.save_entry.get().strip()
+            url = normalize_playlist_url(url)
             
             if not url:
                 messagebox.showerror("Error", "Please enter a valid playlist URL.")
@@ -531,7 +573,7 @@ if GUI_AVAILABLE:
                 
                 if not downloaded_files:
                     self.log_message("❌ No files were successfully downloaded.")
-                    self.after(0, lambda: messagebox.showerror("Error", "No videos could be downloaded from the playlist."))
+                    self.after(0, lambda: messagebox.showerror("Error", "No videos could be downloaded. If you pasted a YouTube watch link, use the playlist link with /playlist?list=... or make sure the playlist is public."))
                     self.after(0, lambda: self.reset_ui("Ready"))
                     return
                     
@@ -617,6 +659,8 @@ def main():
             if not playlist_url:
                 print("❌ Error: No playlist URL provided. Exiting.")
                 sys.exit(1)
+
+        playlist_url = normalize_playlist_url(playlist_url)
                 
         output_filename = args.output
         if not output_filename.lower().endswith('.mp4'):
@@ -655,7 +699,7 @@ def main():
         try:
             downloaded_files = download_playlist(playlist_url, temp_dir, ffmpeg_path, log_cb=print)
             if not downloaded_files:
-                print("❌ No videos downloaded. Check your playlist URL.")
+                print("❌ No videos downloaded. If this was a YouTube watch URL, try the playlist URL instead.")
                 return
                 
             success = False
