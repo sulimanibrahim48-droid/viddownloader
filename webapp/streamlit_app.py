@@ -42,6 +42,23 @@ def normalize_playlist_url(url: str) -> str:
     return url.strip()
 
 
+def get_source_kind(url: str) -> tuple[str, bool]:
+    """Return the normalized URL and whether the source should be treated as a single video."""
+    parsed = urlparse(url.strip())
+    query = parse_qs(parsed.query)
+    list_id = (query.get('list') or [None])[0]
+
+    if not list_id:
+        return url.strip(), True
+
+    host = parsed.netloc.lower()
+    path = parsed.path.lower()
+    if 'youtube.com' in host and path == '/watch':
+        return normalize_playlist_url(url), False
+
+    return url.strip(), False
+
+
 def sanitize_filename(name: str, default: str = 'merged_playlist.mp4') -> str:
     cleaned = re.sub(r'[\\/*?:"<>|]', '_', name.strip())
     cleaned = re.sub(r'_+', '_', cleaned).strip(' _')
@@ -91,8 +108,9 @@ def download_playlist(
     progress_placeholder,
     status_placeholder,
 ) -> list[Path]:
-    playlist_url = normalize_playlist_url(playlist_url)
-    append_log(logs, log_placeholder, f'Using playlist URL: {playlist_url}')
+    normalized_url, is_single_video = get_source_kind(playlist_url)
+    append_log(logs, log_placeholder, f'Using source URL: {normalized_url}')
+    append_log(logs, log_placeholder, f'Source mode: {"single video" if is_single_video else "playlist"}')
 
     downloaded_paths: set[Path] = set()
 
@@ -127,23 +145,26 @@ def download_playlist(
 
     ydl_opts = {
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]',
-        'outtmpl': str(temp_dir / '%(playlist_index)04d_%(title)s.%(ext)s'),
+        'outtmpl': str(temp_dir / ('%(title)s.%(ext)s' if is_single_video else '%(playlist_index)04d_%(title)s.%(ext)s')),
         'logger': None,
         'progress_hooks': [internal_progress_hook],
         'ignoreerrors': True,
         'no_warnings': True,
     }
 
-    if max_videos > 0:
+    if max_videos > 0 and not is_single_video:
         ydl_opts['playlistend'] = max_videos
+
+    if is_single_video:
+        ydl_opts['noplaylist'] = True
 
     if ffmpeg_path and ffmpeg_path != 'ffmpeg':
         ydl_opts['ffmpeg_location'] = ffmpeg_path
 
     with YoutubeDL(ydl_opts) as ydl:
-        error_code = ydl.download([playlist_url])
+        error_code = ydl.download([normalized_url])
         if error_code != 0:
-            append_log(logs, log_placeholder, 'Some playlist items failed or were skipped.')
+            append_log(logs, log_placeholder, 'Some items failed or were skipped.')
 
     downloaded_files: list[Path] = []
     for path in temp_dir.rglob('*'):
