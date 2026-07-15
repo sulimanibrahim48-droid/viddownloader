@@ -120,8 +120,15 @@ function connectToSSE(taskId) {
     // Populate Success Stage
     resultFilename.textContent = data.filename;
     resultSize.textContent = `${data.size_mb.toFixed(1)} MB`;
-    btnDownload.href = data.download_url;
-    btnDownload.dataset.taskId = taskId;
+
+    // Store for the Fetch+Blob download handler
+    downloadApiUrl = data.download_url;
+    downloadFilename = data.filename;
+
+    // Reset button state in case a previous download was made
+    if (btnDownloadLabel) btnDownloadLabel.textContent = 'Download Video';
+    btnDownload.disabled = false;
+    if (androidTip) androidTip.textContent = '';
 
     showStage(successStage);
   });
@@ -190,25 +197,55 @@ stitchForm.addEventListener('submit', async (e) => {
   }
 });
 
-// Download Button Tracking (cleans up file after download trigger)
-btnDownload.addEventListener('click', (e) => {
-  e.preventDefault();
-  const url = btnDownload.href;
+// -------------------------------------------------------
+// Download Handler — Android-compatible Fetch + Blob method
+// -------------------------------------------------------
+const btnDownloadLabel = document.getElementById('btn-download-label');
+const androidTip = document.getElementById('android-tip');
+let downloadApiUrl = null; // Set when success SSE event arrives
+let downloadFilename = 'video.mp4';
 
-  // Use an invisible iframe to download file without navigating the standalone PWA window
-  let iframe = document.getElementById('download-iframe');
-  if (!iframe) {
-    iframe = document.createElement('iframe');
-    iframe.id = 'download-iframe';
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
+btnDownload.addEventListener('click', async () => {
+  if (!downloadApiUrl) return;
+
+  // Show loading state
+  btnDownload.disabled = true;
+  btnDownloadLabel.textContent = 'Preparing download...';
+  androidTip.textContent = '';
+
+  try {
+    // Fetch the file as a binary blob — this keeps us on the same page
+    const response = await fetch(downloadApiUrl);
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+    const blob = await response.blob();
+    // Force video/mp4 MIME so Android recognises it
+    const videoBlob = new Blob([blob], { type: 'video/mp4' });
+    const objectUrl = URL.createObjectURL(videoBlob);
+
+    // Create a temporary anchor and programmatically click it
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = downloadFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    // Clean up object URL after a delay
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+
+    btnDownloadLabel.textContent = 'Download Video';
+    btnDownload.disabled = false;
+    androidTip.textContent = 'Saved! Check your Downloads folder.';
+
+  } catch (err) {
+    console.error('Download failed:', err);
+    btnDownloadLabel.textContent = 'Download Video';
+    btnDownload.disabled = false;
+    androidTip.textContent = 'Download failed. Try again.';
   }
-  iframe.src = url;
-
-  setTimeout(() => {
-    appendLog("Download triggered. Cache will clean up shortly.", "info");
-  }, 1000);
 });
+
 
 // Reset Handlers
 function resetToForm() {
@@ -220,8 +257,11 @@ function resetToForm() {
   outputNameInput.value = 'merged_playlist.mp4';
   if (maxVideosInput) maxVideosInput.value = '0';
   if (mergeModeSelect) mergeModeSelect.value = 'Auto';
+  downloadApiUrl = null;
+  downloadFilename = 'video.mp4';
+  if (androidTip) androidTip.textContent = '';
   currentTaskId = null;
-  
+
   showStage(formStage);
 }
 

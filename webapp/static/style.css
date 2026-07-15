@@ -563,7 +563,15 @@ select {
 }
 
 #btn-download {
+  margin-bottom: 6px;
+}
+
+.android-tip {
+  font-size: 12px;
+  color: var(--success-color);
+  min-height: 18px;
   margin-bottom: 12px;
+  text-align: center;
 }
 
 .text-center {
