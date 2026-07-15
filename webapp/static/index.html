@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Playlist Stitcher</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Download YouTube and media playlists and merge them into a single, seamless video file instantly. Mobile-friendly Progressive Web App.">
+  <meta name="theme-color" content="#8b5cf6">
+  
+  <!-- Apple Mobile Web App Capable -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Stitcher">
+  <link rel="apple-touch-icon" href="/icon.svg">
+
+  <!-- Manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="background-glows">
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+  </div>
+
+  <main class="app-container">
+    <header class="app-header">
+      <div class="logo-wrapper">
+        <svg class="app-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" id="header-logo-svg">
+          <defs>
+            <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#8b5cf6" />
+              <stop offset="100%" stop-color="#3b82f6" />
+            </linearGradient>
+          </defs>
+          <rect width="512" height="512" rx="128" fill="url(#logoGrad)" />
+          <polygon points="210,160 210,352 350,256" fill="#ffffff" />
+          <circle cx="120" cy="256" r="20" fill="#ffffff" opacity="0.8" />
+          <circle cx="392" cy="256" r="20" fill="#ffffff" opacity="0.8" />
+          <line x1="140" y1="256" x2="372" y2="256" stroke="#ffffff" stroke-width="8" stroke-dasharray="10 8" opacity="0.8" />
+        </svg>
+      </div>
+      <h1 class="app-title">PLAYLIST STITCHER</h1>
+      <p class="app-subtitle">Download & merge video playlists into one file</p>
+    </header>
+
+    <!-- FORM STAGE -->
+    <section id="form-stage" class="card stage-active">
+      <form id="stitch-form" novalidate>
+        <div class="form-group">
+          <label for="playlist-url">Playlist URL</label>
+          <input 
+            type="url" 
+            id="playlist-url" 
+            placeholder="https://www.youtube.com/playlist?list=..." 
+            required 
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <span class="error-msg" id="url-error">Please enter a valid URL</span>
+        </div>
+
+        <div class="form-group">
+          <label for="output-name">Output Name</label>
+          <input 
+            type="text" 
+            id="output-name" 
+            value="merged_playlist.mp4" 
+            placeholder="e.g. my_playlist.mp4"
+            spellcheck="false"
+          >
+        </div>
+
+
+
+        <button type="submit" class="btn btn-primary" id="btn-submit">
+          <span>Stitch Playlist</span>
+          <svg class="icon-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+      </form>
+    </section>
+
+    <!-- PROGRESS STAGE -->
+    <section id="progress-stage" class="card">
+      <div class="progress-header">
+        <div class="loader-spinner"></div>
+        <h2 class="status-title" id="status-title">Starting process...</h2>
+      </div>
+
+      <div class="progress-bar-wrapper">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%"></div>
+        </div>
+        <div class="progress-stats">
+          <span id="progress-percent">0%</span>
+        </div>
+      </div>
+
+      <!-- Hidden console logs -->
+      <pre class="console-log hidden" id="console-log"></pre>
+    </section>
+
+    <!-- SUCCESS STAGE -->
+    <section id="success-stage" class="card text-center">
+      <div class="status-icon success-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <h2 class="stage-title">Merge Complete!</h2>
+      <p class="success-message">Your video playlist has been successfully merged into a single file.</p>
+      
+      <div class="result-details">
+        <div class="detail-row">
+          <span class="detail-label">Filename:</span>
+          <span class="detail-value" id="result-filename">playlist.mp4</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">File Size:</span>
+          <span class="detail-value" id="result-size">0.0 MB</span>
+        </div>
+      </div>
+
+      <a href="#" class="btn btn-success" id="btn-download" download>
+        <span>Download Video</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      </a>
+
+      <button class="btn btn-secondary" id="btn-reset-success">Stitch Another Playlist</button>
+    </section>
+
+    <!-- ERROR STAGE -->
+    <section id="error-stage" class="card text-center">
+      <div class="status-icon error-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </div>
+      <h2 class="stage-title">Stitching Failed</h2>
+      <p class="error-message" id="error-message-text">An unknown error occurred during the process.</p>
+      
+      <pre class="console-log error-log hidden" id="error-console-log"></pre>
+
+      <button class="btn btn-primary" id="btn-reset-error">Try Again</button>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>Playlist Stitcher Web App &bull; Accessible locally or on Wi-Fi</p>
+    <div id="pwa-install-banner" class="pwa-banner hidden">
+      <span>Install app to your home screen for a native experience!</span>
+      <button class="btn-install" id="btn-pwa-install">Install</button>
+    </div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

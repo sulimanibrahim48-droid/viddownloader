@@ -1,0 +1,18 @@
+{
+  "name": "Playlist Stitcher",
+  "short_name": "Stitcher",
+  "description": "Download playlists and merge them into a single, seamless video.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#8b5cf6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
