@@ -40,6 +40,7 @@ const errorConsoleLog = document.getElementById('error-console-log');
 
 const btnResetSuccess = document.getElementById('btn-reset-success');
 const btnResetError = document.getElementById('btn-reset-error');
+const btnCancel = document.getElementById('btn-cancel');
 
 const pwaInstallBanner = document.getElementById('pwa-install-banner');
 const btnPwaInstall = document.getElementById('btn-pwa-install');
@@ -85,6 +86,20 @@ function appendLog(message, type = 'info') {
   consoleLog.scrollTop = consoleLog.scrollHeight;
 }
 
+function resetCancelButton() {
+  if (btnCancel) {
+    btnCancel.disabled = false;
+    btnCancel.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="15" y1="9" x2="9" y2="15"></line>
+        <line x1="9" y1="9" x2="15" y2="15"></line>
+      </svg>
+      <span>Cancel Download</span>
+    `;
+  }
+}
+
 // SSE Connection Manager
 function connectToSSE(taskId) {
   if (eventSource) {
@@ -95,6 +110,7 @@ function connectToSSE(taskId) {
   progressBarFill.style.width = '0%';
   progressPercent.textContent = '0%';
   statusTitle.textContent = 'Connecting to server...';
+  resetCancelButton();
 
   eventSource = new EventSource(`/api/stream/${taskId}`);
 
@@ -111,6 +127,16 @@ function connectToSSE(taskId) {
     progressBarFill.style.width = `${pct * 100}%`;
     progressPercent.textContent = `${Math.round(pct * 100)}%`;
     statusTitle.textContent = status;
+  });
+
+  eventSource.addEventListener('cancelled', (event) => {
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+    currentTaskId = null;
+    resetCancelButton();
+    showStage(formStage);
   });
 
   eventSource.addEventListener('success', (event) => {
@@ -149,6 +175,54 @@ function connectToSSE(taskId) {
   };
 }
 
+// Cancel Button Handler
+if (btnCancel) {
+  btnCancel.addEventListener('click', async () => {
+    if (!currentTaskId) {
+      showStage(formStage);
+      return;
+    }
+
+    btnCancel.disabled = true;
+    btnCancel.innerHTML = `
+      <svg class="loader-spinner" style="width: 14px; height: 14px; border-width: 2px;" viewBox="0 0 24 24"></svg>
+      <span>Cancelling...</span>
+    `;
+    statusTitle.textContent = 'Cancelling download...';
+
+    try {
+      await fetch(`/api/cancel/${currentTaskId}`, { method: 'POST' });
+    } catch (err) {
+      console.error('Failed to send cancel request:', err);
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      currentTaskId = null;
+      resetCancelButton();
+      showStage(formStage);
+    }
+  });
+}
+
+// Format Radios
+const formatRadios = document.querySelectorAll('input[name="format-choice"]');
+formatRadios.forEach(radio => {
+  radio.addEventListener('change', (e) => {
+    const val = e.target.value;
+    const currentName = outputNameInput.value.trim();
+    if (val === 'mp3') {
+      if (currentName.toLowerCase().endsWith('.mp4')) {
+        outputNameInput.value = currentName.slice(0, -4) + '.mp3';
+      }
+    } else {
+      if (currentName.toLowerCase().endsWith('.mp3')) {
+        outputNameInput.value = currentName.slice(0, -4) + '.mp4';
+      }
+    }
+  });
+});
+
 // Form Submission
 stitchForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -157,6 +231,7 @@ stitchForm.addEventListener('submit', async (e) => {
   const filename = outputNameInput.value.trim();
   const maxVideos = maxVideosInput ? maxVideosInput.value : '0';
   const mergeMode = mergeModeSelect ? mergeModeSelect.value : 'Auto';
+  const formatType = document.querySelector('input[name="format-choice"]:checked')?.value || 'mp4';
 
   // Simple URL Validation
   if (!url) {
@@ -171,6 +246,7 @@ stitchForm.addEventListener('submit', async (e) => {
   formData.append('filename', filename);
   formData.append('max_videos', maxVideos);
   formData.append('merge_mode', mergeMode);
+  formData.append('format_type', formatType);
 
   // Transition to Progress Card
   showStage(progressStage);
@@ -191,7 +267,11 @@ stitchForm.addEventListener('submit', async (e) => {
     connectToSSE(currentTaskId);
 
   } catch (error) {
-    errorMessageText.textContent = error.message;
+    if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+      errorMessageText.textContent = 'Cannot connect to the server. Please ensure the server is active on http://127.0.0.1:8000 and try again.';
+    } else {
+      errorMessageText.textContent = error.message;
+    }
     errorConsoleLog.textContent = error.stack || 'Could not launch stitching job.';
     showStage(errorStage);
   }
@@ -208,6 +288,9 @@ let downloadFilename = 'video.mp4';
 btnDownload.addEventListener('click', async () => {
   if (!downloadApiUrl) return;
 
+  const isAudio = downloadFilename.toLowerCase().endsWith('.mp3');
+  const defaultLabel = isAudio ? 'Download Audio' : 'Download Video';
+
   // Show loading state
   btnDownload.disabled = true;
   btnDownloadLabel.textContent = 'Preparing download...';
@@ -219,9 +302,9 @@ btnDownload.addEventListener('click', async () => {
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
     const blob = await response.blob();
-    // Force video/mp4 MIME so Android recognises it
-    const videoBlob = new Blob([blob], { type: 'video/mp4' });
-    const objectUrl = URL.createObjectURL(videoBlob);
+    const mimeType = isAudio ? 'audio/mpeg' : 'video/mp4';
+    const mediaBlob = new Blob([blob], { type: mimeType });
+    const objectUrl = URL.createObjectURL(mediaBlob);
 
     // Create a temporary anchor and programmatically click it
     const a = document.createElement('a');
@@ -234,13 +317,13 @@ btnDownload.addEventListener('click', async () => {
     // Clean up object URL after a delay
     setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
 
-    btnDownloadLabel.textContent = 'Download Video';
+    btnDownloadLabel.textContent = defaultLabel;
     btnDownload.disabled = false;
     androidTip.textContent = 'Saved! Check your Downloads folder.';
 
   } catch (err) {
     console.error('Download failed:', err);
-    btnDownloadLabel.textContent = 'Download Video';
+    btnDownloadLabel.textContent = defaultLabel;
     btnDownload.disabled = false;
     androidTip.textContent = 'Download failed. Try again.';
   }
@@ -254,11 +337,12 @@ function resetToForm() {
     eventSource = null;
   }
   playlistUrlInput.value = '';
-  outputNameInput.value = 'merged_playlist.mp4';
+  const isAudio = document.querySelector('input[name="format-choice"]:checked')?.value === 'mp3';
+  outputNameInput.value = isAudio ? 'merged_playlist.mp3' : 'merged_playlist.mp4';
   if (maxVideosInput) maxVideosInput.value = '0';
   if (mergeModeSelect) mergeModeSelect.value = 'Auto';
   downloadApiUrl = null;
-  downloadFilename = 'video.mp4';
+  downloadFilename = isAudio ? 'audio.mp3' : 'video.mp4';
   if (androidTip) androidTip.textContent = '';
   currentTaskId = null;
 

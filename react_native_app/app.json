@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Playlist Stitcher",
+    "slug": "playlist-stitcher",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.stitcher.playliststitcher"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0f172a"
+      },
+      "package": "com.stitcher.playliststitcher",
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}

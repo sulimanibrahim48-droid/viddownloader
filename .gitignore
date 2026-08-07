@@ -8,6 +8,15 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Temp files
+# Node / React Native
+node_modules/
+.expo/
+.expo-shared/
+npm-debug.*
+yarn-error.*
+
+# Temp / Test media files
 temp_playlist_downloads/
 *.log
+*.mp4
+*.mp3
