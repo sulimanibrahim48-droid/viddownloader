@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: viddownloader
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /docs

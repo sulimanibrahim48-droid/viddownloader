@@ -1,38 +1,56 @@
 # 🎬 Playlist Stitcher
 
-A clean desktop application that downloads playlists and merges them into a single, seamless video file.
+تطبيق قوي وسلس لتحميل قوائم التشغيل (YouTube Playlists) ودمجها في ملف فيديو أو صوت واحد بجودة عالية وبدون فقدان جودة.
 
-## Features
+---
 
-- Modern dark-themed GUI built with `customtkinter`
-- Downloads entire playlists using `yt-dlp`
-- Lossless FFmpeg concatenation (instant, no re-encoding)
-- MoviePy fallback for mixed-format playlists
-- Auto-detects the Downloads folder for saving
-- Automated cleanup of temporary files
+## 🚀 التشغيل المباشر أونلاين (1-Click Cloud Deploy)
 
-## Download
+يمكنك تشغيل البرنامج كسيرفر ويب دائم يعمل 24/7 مجاناً واستخدامه من الموبايل أو أي جهاز بنقرة واحدة:
 
-👉 **[Download PlaylistStitcher.exe from Releases](../../releases/latest)**
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sulimanibrahim48-droid/viddownloader)
 
-Just download and double-click — no installation required!
+> **طريقة التشغيل على Render:**
+> 1. اضغط على زر **Deploy to Render** بالأعلى.
+> 2. سجّل الدخول بحسابك في GitHub.
+> 3. اضغط **Apply**، وسيقوم الموقع ببناء السيرفر وتشغيله تلقائياً.
+> 4. ستحصل على رابط دائم (مثال: `https://viddownloader.onrender.com`) تفتحه من الموبايل في أي وقت!
 
-## Usage
+---
 
-1. Paste a playlist URL
-2. Click **Download & Merge Playlist**
-3. Wait for the process to complete
-4. Your merged video will be saved in your Downloads folder
+## ✨ المميزات (Features)
 
-## Building from Source
+- 📱 **واجهة ويب مخصصة للموبايل (PWA & React Native)**: تصميم ليلي أنيق وسريع.
+- ⚡ **دمج فائق السرعة بـ FFmpeg**: دمج مباشر وسريع بدون إعادة تشفير (Lossless Stream Copy).
+- 🎵 **دعم MP4 و MP3**: خيار تنزيل القائمة كفيديو مدمج أو مقطع صوتي مدمج.
+- 📊 **شريط تقدم وبث مباشر (Live SSE Stream)**: متابعة نسبة التنزيل والدمج لحظة بلحظة.
+- 💻 **تطبيق مكتبي للكمبيوتر (Desktop GUI)**: واجهة رسومية داكنة مبنية بـ CustomTkinter.
 
-If you want to run from source code instead:
+---
+
+## 📱 تشغيل تطبيق الموبايل (React Native App)
+
+المشروع يحتوي على تطبيق موبايل متكامل في مجلد `react_native_app`:
+
+```bash
+cd react_native_app
+npm install
+npx expo start
+```
+
+---
+
+## 💻 التشغيل المكتبي (Desktop)
 
 ```bash
 pip install -r requirements.txt
 python playlist_stitcher.py
 ```
 
-## License
+أو تحميل النسخة التنفيذية المباشرة:  
+👉 **[Download PlaylistStitcher.exe from Releases](../../releases/latest)**
 
+---
+
+## 📄 License
 Free to use and share.
